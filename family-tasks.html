@@ -532,8 +532,9 @@ document.getElementById('authBtn').addEventListener('click', async () => {
     let familyId = null;
     if (role === 'child') {
       if (!familyCode) { errEl.textContent = 'Введи код семьи от родителя'; return; }
-      const { data: fam } = await sb.from('families').select('id').eq('code', familyCode).single();
-      if (!fam) { errEl.textContent = 'Неверный код семьи'; return; }
+      const { data: fam, error: famErr } = await sb.from('families').select('id').eq('code', familyCode).maybeSingle();
+      if (famErr) { errEl.textContent = 'Ошибка: ' + famErr.message; return; }
+      if (!fam) { errEl.textContent = 'Неверный код семьи — проверь правильность'; return; }
       familyId = fam.id;
     }
 
@@ -568,9 +569,8 @@ async function initApp(user) {
   currentUser = user;
   let { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single();
   if (!profile) {
-    // Wait a moment and retry once (RLS timing issue)
-    await new Promise(r => setTimeout(r, 800));
-    const { data: profile2 } = await sb.from('profiles').select('*').eq('id', user.id).single();
+    await new Promise(r => setTimeout(r, 1000));
+    const { data: profile2 } = await sb.from('profiles').select('*').eq('id', user.id).maybeSingle();
     profile = profile2;
   }
   if (!profile) {
