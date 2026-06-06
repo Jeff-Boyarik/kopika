@@ -90,13 +90,15 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
 .scroll-area { flex: 1; overflow-y: auto; padding: 14px 14px 0; -webkit-overflow-scrolling: touch; }
 .scroll-area::-webkit-scrollbar { display: none; }
 
-.bottom-nav { display: flex; border-top: 1px solid var(--border); background: #fff; flex-shrink: 0; padding: 4px 0 calc(4px + env(safe-area-inset-bottom)); }
-.nav-item { flex: 1; padding: 8px 4px 5px; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; transition: all 0.2s; position: relative; }
+.bottom-nav { display: flex; border-top: 1px solid var(--border); background: #fff; flex-shrink: 0; padding: 8px 8px calc(8px + env(safe-area-inset-bottom)); gap: 4px; }
+.nav-item { flex: 1; padding: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; transition: all 0.2s; position: relative; }
+.nav-icon-wrap { width: 44px; height: 44px; border-radius: 14px; background: transparent; display: flex; align-items: center; justify-content: center; transition: all 0.25s cubic-bezier(.34,1.56,.64,1); }
 .nav-item .nav-icon { font-size: 20px; transition: transform 0.25s cubic-bezier(.34,1.56,.64,1); }
 .nav-item .nav-label { font-size: 10px; font-weight: 600; color: var(--muted); transition: color 0.2s; }
 .nav-item.active .nav-label { color: var(--accent); font-weight: 700; }
-.nav-item.active .nav-icon { transform: scale(1.18); }
-.nav-badge { position: absolute; top: 4px; right: calc(50% - 20px); background: var(--red); color: #fff; font-size: 9px; font-weight: 800; min-width: 15px; height: 15px; border-radius: 8px; display: flex; align-items: center; justify-content: center; padding: 0 3px; }
+.nav-item.active .nav-icon-wrap { background: linear-gradient(135deg, #EEF2FF, #E0E7FF); box-shadow: 0 2px 8px rgba(108,99,255,0.15); }
+.nav-item.active .nav-icon { transform: scale(1.1); }
+.nav-badge { position: absolute; top: 0px; right: calc(50% - 24px); background: var(--red); color: #fff; font-size: 9px; font-weight: 800; min-width: 15px; height: 15px; border-radius: 8px; display: flex; align-items: center; justify-content: center; padding: 0 3px; z-index: 2; }
 
 .card { background: #fff; border-radius: var(--radius); border: 1px solid var(--border); padding: 16px; margin-bottom: 10px; box-shadow: var(--shadow); }
 
@@ -304,19 +306,19 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
 
   <div class="bottom-nav">
     <div class="nav-item active" data-tab="home">
-      <div class="nav-icon">🏠</div>
+      <div class="nav-icon-wrap"><div class="nav-icon">🏠</div></div>
       <div class="nav-label">Главная</div>
     </div>
     <div class="nav-item" data-tab="tasks">
-      <div class="nav-icon">⚡</div>
+      <div class="nav-icon-wrap"><div class="nav-icon">⚡</div></div>
       <div class="nav-label">Задания</div>
     </div>
     <div class="nav-item" data-tab="achievements">
-      <div class="nav-icon">🏆</div>
+      <div class="nav-icon-wrap"><div class="nav-icon">🏆</div></div>
       <div class="nav-label">Награды</div>
     </div>
     <div class="nav-item" data-tab="history">
-      <div class="nav-icon">📋</div>
+      <div class="nav-icon-wrap"><div class="nav-icon">📋</div></div>
       <div class="nav-label">История</div>
     </div>
   </div>
@@ -339,20 +341,20 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
 
   <div class="bottom-nav">
     <div class="nav-item active" data-ptab="review">
-      <div class="nav-icon">🔍</div>
+      <div class="nav-icon-wrap"><div class="nav-icon">🔍</div></div>
       <div class="nav-label">Проверка</div>
       <div class="nav-badge" id="reviewBadge" style="display:none"></div>
     </div>
     <div class="nav-item" data-ptab="tasks">
-      <div class="nav-icon">📝</div>
+      <div class="nav-icon-wrap"><div class="nav-icon">📝</div></div>
       <div class="nav-label">Задания</div>
     </div>
     <div class="nav-item" data-ptab="wallet">
-      <div class="nav-icon">💰</div>
+      <div class="nav-icon-wrap"><div class="nav-icon">💰</div></div>
       <div class="nav-label">Кошелёк</div>
     </div>
     <div class="nav-item" data-ptab="stats">
-      <div class="nav-icon">📊</div>
+      <div class="nav-icon-wrap"><div class="nav-icon">📊</div></div>
       <div class="nav-label">Статистика</div>
     </div>
   </div>
@@ -368,20 +370,20 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
       <div class="modal-subtitle" id="tmDesc"></div>
       <div class="modal-reward-big" id="tmReward"></div>
 
-      <div class="photo-section">
-        <div class="photo-label">📸 Фото ДО</div>
+      <div class="photo-section" id="sectionBefore">
+        <div class="photo-label" id="labelBefore">📸 Фото ДО</div>
         <div class="photo-upload" id="uploadBefore">
-          <input type="file" accept="image/*,video/*" id="fileBefore" capture="environment">
+          <input type="file" accept="image/*" id="fileBefore" capture="environment">
           <div class="photo-upload-icon">📷</div>
           <div class="photo-upload-text">Нажми чтобы добавить фото</div>
           <img class="photo-preview" id="previewBefore">
         </div>
       </div>
 
-      <div class="photo-section">
+      <div class="photo-section" id="sectionAfter">
         <div class="photo-label">✅ Фото ПОСЛЕ</div>
         <div class="photo-upload" id="uploadAfter">
-          <input type="file" accept="image/*,video/*" id="fileAfter" capture="environment">
+          <input type="file" accept="image/*" id="fileAfter" capture="environment">
           <div class="photo-upload-icon">📷</div>
           <div class="photo-upload-text">Нажми чтобы добавить фото</div>
           <img class="photo-preview" id="previewAfter">
@@ -408,6 +410,21 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
       <div class="field"><label>Описание</label><input type="text" id="etDesc"></div>
       <div class="field"><label>Награда (₽)</label><input type="number" id="etReward" min="1"></div>
       <div class="field"><label>Опыт (XP)</label><input type="number" id="etXp" min="1"></div>
+      <div class="field">
+        <label>Количество фото</label>
+        <select id="etPhotoCount">
+          <option value="2">2 фото — до и после</option>
+          <option value="1">1 фото — только результат</option>
+          <option value="0">Без фото</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Разрешить видео</label>
+        <select id="etAllowVideo">
+          <option value="false">Только фото</option>
+          <option value="true">Фото и видео</option>
+        </select>
+      </div>
       <button class="btn btn-primary" id="etSave" style="margin-bottom:10px">Сохранить</button>
       <button class="btn btn-ghost" id="etCancel">Отмена</button>
     </div>
@@ -778,6 +795,40 @@ function openTaskModal(task) {
   document.getElementById('previewAfter').style.display = 'none';
   document.getElementById('fileBefore').value = '';
   document.getElementById('fileAfter').value = '';
+
+  const photoCount = task.photo_count !== undefined ? task.photo_count : 2;
+  const allowVideo = task.allow_video || false;
+  const accept = allowVideo ? 'image/*,video/*' : 'image/*';
+  const uploadText = allowVideo ? 'Нажми чтобы добавить фото или видео' : 'Нажми чтобы добавить фото';
+  const icon = allowVideo ? '🎥' : '📷';
+
+  // Configure before section
+  const sectionBefore = document.getElementById('sectionBefore');
+  const sectionAfter = document.getElementById('sectionAfter');
+
+  if (photoCount === 0) {
+    sectionBefore.style.display = 'none';
+    sectionAfter.style.display = 'none';
+  } else if (photoCount === 1) {
+    sectionBefore.style.display = 'none';
+    sectionAfter.style.display = 'block';
+    document.getElementById('fileAfter').accept = accept;
+    document.querySelector('#sectionAfter .photo-upload-text').textContent = uploadText;
+    document.querySelector('#sectionAfter .photo-upload-icon').textContent = icon;
+    document.querySelector('#sectionAfter .photo-label').textContent = allowVideo ? '🎥 Фото или видео' : '📸 Фото результата';
+  } else {
+    sectionBefore.style.display = 'block';
+    sectionAfter.style.display = 'block';
+    document.getElementById('fileBefore').accept = accept;
+    document.getElementById('fileAfter').accept = accept;
+    const txt = uploadText;
+    document.querySelector('#sectionBefore .photo-upload-text').textContent = txt;
+    document.querySelector('#sectionAfter .photo-upload-text').textContent = txt;
+    document.querySelector('#sectionBefore .photo-upload-icon').textContent = icon;
+    document.querySelector('#sectionAfter .photo-upload-icon').textContent = icon;
+    document.getElementById('labelBefore').textContent = allowVideo ? '🎥 Видео/фото ДО' : '📸 Фото ДО';
+  }
+
   document.getElementById('taskModal').classList.add('active');
 }
 
@@ -800,12 +851,15 @@ document.getElementById('cancelTask').addEventListener('click', () => {
 document.getElementById('submitTask').addEventListener('click', async () => {
   const task = selectedTaskForSubmit;
   if (!task) return;
+  const photoCount = task.photo_count !== undefined ? task.photo_count : 2;
   const fileBefore = document.getElementById('fileBefore').files[0];
   const fileAfter = document.getElementById('fileAfter').files[0];
 
-  if (!fileBefore || !fileAfter) {
-    alert('Загрузи оба фото — до и после!');
-    return;
+  if (photoCount === 2 && (!fileBefore || !fileAfter)) {
+    alert('Загрузи оба файла — до и после!'); return;
+  }
+  if (photoCount === 1 && !fileAfter) {
+    alert('Загрузи фото или видео!'); return;
   }
 
   const btn = document.getElementById('submitTask');
@@ -815,14 +869,20 @@ document.getElementById('submitTask').addEventListener('click', async () => {
   try {
     const uid = currentUser.id;
     const ts = Date.now();
-    const pathBefore = `${uid}/${task.id}_before_${ts}`;
-    const pathAfter = `${uid}/${task.id}_after_${ts}`;
+    let urlBefore = null, urlAfter = null;
 
-    await sb.storage.from('task-photos').upload(pathBefore, fileBefore);
-    await sb.storage.from('task-photos').upload(pathAfter, fileAfter);
-
-    const { data: { publicUrl: urlBefore } } = sb.storage.from('task-photos').getPublicUrl(pathBefore);
-    const { data: { publicUrl: urlAfter } } = sb.storage.from('task-photos').getPublicUrl(pathAfter);
+    if (photoCount >= 1 && fileAfter) {
+      const pathAfter = `${uid}/${task.id}_after_${ts}`;
+      await sb.storage.from('task-photos').upload(pathAfter, fileAfter);
+      const { data: d } = sb.storage.from('task-photos').getPublicUrl(pathAfter);
+      urlAfter = d.publicUrl;
+    }
+    if (photoCount === 2 && fileBefore) {
+      const pathBefore = `${uid}/${task.id}_before_${ts}`;
+      await sb.storage.from('task-photos').upload(pathBefore, fileBefore);
+      const { data: d } = sb.storage.from('task-photos').getPublicUrl(pathBefore);
+      urlBefore = d.publicUrl;
+    }
 
     await sb.from('completions').insert({
       task_id: task.id,
@@ -980,6 +1040,8 @@ function openEditTaskModal(task) {
   document.getElementById('etDesc').value = task?.description || '';
   document.getElementById('etReward').value = task?.reward || 50;
   document.getElementById('etXp').value = task?.xp || 10;
+  document.getElementById('etPhotoCount').value = task?.photo_count !== undefined ? String(task.photo_count) : '2';
+  document.getElementById('etAllowVideo').value = task?.allow_video ? 'true' : 'false';
   document.getElementById('editTaskModal').classList.add('active');
 }
 
@@ -990,6 +1052,8 @@ document.getElementById('etSave').addEventListener('click', async () => {
     description: document.getElementById('etDesc').value.trim(),
     reward: parseInt(document.getElementById('etReward').value),
     xp: parseInt(document.getElementById('etXp').value),
+    photo_count: parseInt(document.getElementById('etPhotoCount').value),
+    allow_video: document.getElementById('etAllowVideo').value === 'true',
   };
   if (!data.name) { alert('Введи название'); return; }
   if (editingTask) {
