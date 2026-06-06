@@ -606,8 +606,24 @@ document.getElementById('authBtn').addEventListener('click', async () => {
       await initApp(data.user);
     }
   } else {
-    const { data, error } = await sb.auth.signInWithPassword({ email, password });
-    if (error) { errEl.textContent = 'Неверный email или пароль'; resetBtn(); return; }
+    let data, error;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const result = await sb.auth.signInWithPassword({ email, password });
+      data = result.data; error = result.error;
+      if (!error || !error.message?.includes('fetch')) break;
+      if (attempt < 3) {
+        errEl.textContent = `📡 Попытка ${attempt}/3...`;
+        await new Promise(r => setTimeout(r, 1500));
+      }
+    }
+    if (error) {
+      if (error.message?.includes('fetch') || error.message?.includes('network') || error.message?.includes('Failed') || error.message?.includes('Load')) {
+        errEl.textContent = '📡 Нет соединения с сервером. Проверь интернет и попробуй снова.';
+      } else {
+        errEl.textContent = 'Неверный email или пароль';
+      }
+      resetBtn(); return;
+    }
     await initApp(data.user);
   }
 });
@@ -893,10 +909,17 @@ function openTaskModal(task) {
   document.getElementById('tmTitle').textContent = task.name;
   document.getElementById('tmDesc').textContent = task.description || '';
   document.getElementById('tmReward').textContent = `+${task.reward} ₽ · +${task.xp} XP`;
-  document.getElementById('previewBefore').style.display = 'none';
-  document.getElementById('previewAfter').style.display = 'none';
-  document.getElementById('fileBefore').value = '';
-  document.getElementById('fileAfter').value = '';
+  ['Before', 'After'].forEach(side => {
+    const img = document.getElementById('preview' + side);
+    const vid = document.getElementById('video' + side);
+    const wrap = document.getElementById('previewWrap' + side);
+    if (img) { img.style.display = 'none'; img.src = ''; }
+    if (vid) { vid.style.display = 'none'; vid.src = ''; }
+    if (wrap) wrap.style.display = 'none';
+    document.getElementById('file' + side).value = '';
+    const gal = document.getElementById('file' + side + '2');
+    if (gal) gal.value = '';
+  });
 
   const photoCount = task.photo_count !== undefined ? task.photo_count : 2;
   const allowVideo = task.allow_video || false;
@@ -934,36 +957,47 @@ function openTaskModal(task) {
   document.getElementById('taskModal').classList.add('active');
 }
 
+function handleFileChange(side, file) {
+  if (!file) return;
+  const wrap = document.getElementById('previewWrap' + side);
+  const img = document.getElementById('preview' + side);
+  const vid = document.getElementById('video' + side);
+  wrap.style.display = 'block';
+  if (file.type.startsWith('video/')) {
+    img.style.display = 'none';
+    vid.style.display = 'block';
+    vid.src = URL.createObjectURL(file);
+  } else {
+    vid.style.display = 'none';
+    img.style.display = 'block';
+    img.src = URL.createObjectURL(file);
+  }
+  // Sync to primary input for upload
+  if (!file._synced) {
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    document.getElementById('file' + side).files = dt.files;
+  }
+}
+
 ['Before', 'After'].forEach(side => {
   document.getElementById('file' + side).addEventListener('change', e => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const uploadDiv = document.getElementById('upload' + side);
-    const icon = uploadDiv.querySelector('.photo-upload-icon');
-    const text = uploadDiv.querySelector('.photo-upload-text');
-
-    if (file.type.startsWith('video/')) {
-      // Video preview
-      icon.style.display = 'none';
-      text.style.display = 'none';
-      let vid = uploadDiv.querySelector('video');
-      if (!vid) {
-        vid = document.createElement('video');
-        vid.style.cssText = 'width:100%;border-radius:10px;max-height:160px;';
-        vid.controls = true;
-        vid.playsInline = true;
-        uploadDiv.appendChild(vid);
-      }
-      vid.src = URL.createObjectURL(file);
-    } else {
-      // Image preview
-      const preview = document.getElementById('preview' + side);
-      preview.src = URL.createObjectURL(file);
-      preview.style.display = 'block';
-      icon.style.display = 'none';
-      text.style.display = 'none';
-    }
+    handleFileChange(side, e.target.files[0]);
   });
+  const gallery = document.getElementById('file' + side + '2');
+  if (gallery) {
+    gallery.addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      handleFileChange(side, file);
+      // Sync file to primary input
+      try {
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        document.getElementById('file' + side).files = dt.files;
+      } catch(err) {}
+    });
+  }
 });
 
 document.getElementById('cancelTask').addEventListener('click', () => {
