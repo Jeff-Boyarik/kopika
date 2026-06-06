@@ -392,7 +392,7 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
       <div class="photo-section" id="sectionBefore">
         <div class="photo-label" id="labelBefore">📸 Фото ДО</div>
         <div class="photo-upload" id="uploadBefore">
-          <input type="file" accept="image/*" id="fileBefore" capture="environment">
+          <input type="file" accept="image/*" id="fileBefore">
           <div class="photo-upload-icon">📷</div>
           <div class="photo-upload-text">Нажми чтобы добавить фото</div>
           <img class="photo-preview" id="previewBefore">
@@ -402,7 +402,7 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
       <div class="photo-section" id="sectionAfter">
         <div class="photo-label">✅ Фото ПОСЛЕ</div>
         <div class="photo-upload" id="uploadAfter">
-          <input type="file" accept="image/*" id="fileAfter" capture="environment">
+          <input type="file" accept="image/*" id="fileAfter">
           <div class="photo-upload-icon">📷</div>
           <div class="photo-upload-text">Нажми чтобы добавить фото</div>
           <img class="photo-preview" id="previewAfter">
@@ -651,10 +651,19 @@ async function renderChildTab(tab) {
   const content = document.getElementById('childContent');
   content.innerHTML = '<div class="loading"><div class="spinner"></div> Загрузка...</div>';
 
-  if (tab === 'home') await renderChildHome(content);
-  else if (tab === 'tasks') await renderChildTasks(content);
-  else if (tab === 'achievements') await renderChildAchievements(content);
-  else if (tab === 'history') await renderChildHistory(content);
+  try {
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000));
+    if (tab === 'home') await Promise.race([renderChildHome(content), timeout]);
+    else if (tab === 'tasks') await Promise.race([renderChildTasks(content), timeout]);
+    else if (tab === 'achievements') await Promise.race([renderChildAchievements(content), timeout]);
+    else if (tab === 'history') await Promise.race([renderChildHistory(content), timeout]);
+  } catch(e) {
+    content.innerHTML = `<div class="empty">
+      <div class="empty-icon">📡</div>
+      <div class="empty-text">Нет соединения</div>
+      <button class="btn btn-primary" style="margin-top:16px;width:auto;padding:10px 24px" onclick="renderChildTab('${tab}')">Повторить</button>
+    </div>`;
+  }
 }
 
 async function renderChildHome(content) {
@@ -913,11 +922,31 @@ function openTaskModal(task) {
   document.getElementById('file' + side).addEventListener('change', e => {
     const file = e.target.files[0];
     if (!file) return;
-    const preview = document.getElementById('preview' + side);
-    preview.src = URL.createObjectURL(file);
-    preview.style.display = 'block';
-    document.querySelector('#upload' + side + ' .photo-upload-icon').style.display = 'none';
-    document.querySelector('#upload' + side + ' .photo-upload-text').style.display = 'none';
+    const uploadDiv = document.getElementById('upload' + side);
+    const icon = uploadDiv.querySelector('.photo-upload-icon');
+    const text = uploadDiv.querySelector('.photo-upload-text');
+
+    if (file.type.startsWith('video/')) {
+      // Video preview
+      icon.style.display = 'none';
+      text.style.display = 'none';
+      let vid = uploadDiv.querySelector('video');
+      if (!vid) {
+        vid = document.createElement('video');
+        vid.style.cssText = 'width:100%;border-radius:10px;max-height:160px;';
+        vid.controls = true;
+        vid.playsInline = true;
+        uploadDiv.appendChild(vid);
+      }
+      vid.src = URL.createObjectURL(file);
+    } else {
+      // Image preview
+      const preview = document.getElementById('preview' + side);
+      preview.src = URL.createObjectURL(file);
+      preview.style.display = 'block';
+      icon.style.display = 'none';
+      text.style.display = 'none';
+    }
   });
 });
 
@@ -995,10 +1024,19 @@ async function renderParentTab(tab) {
   currentParentTab = tab;
   const content = document.getElementById('parentContent');
   content.innerHTML = '<div class="loading"><div class="spinner"></div> Загрузка...</div>';
-  if (tab === 'review') await renderParentReview(content);
-  else if (tab === 'tasks') await renderParentTasks(content);
-  else if (tab === 'wallet') await renderParentWallet(content);
-  else if (tab === 'stats') await renderParentStats(content);
+  try {
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000));
+    if (tab === 'review') await Promise.race([renderParentReview(content), timeout]);
+    else if (tab === 'tasks') await Promise.race([renderParentTasks(content), timeout]);
+    else if (tab === 'wallet') await Promise.race([renderParentWallet(content), timeout]);
+    else if (tab === 'stats') await Promise.race([renderParentStats(content), timeout]);
+  } catch(e) {
+    content.innerHTML = `<div class="empty">
+      <div class="empty-icon">📡</div>
+      <div class="empty-text">Нет соединения</div>
+      <button class="btn btn-primary" style="margin-top:16px;width:auto;padding:10px 24px" onclick="renderParentTab('${tab}')">Повторить</button>
+    </div>`;
+  }
 }
 
 async function renderParentReview(content) {
