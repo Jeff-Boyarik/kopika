@@ -594,7 +594,11 @@ document.getElementById('authBtn').addEventListener('click', async () => {
     const { data, error } = await sb.auth.signUp({ email, password });
     if (error) { errEl.textContent = error.message; return; }
     if (data.user) {
-      await sb.from('profiles').insert({ id: data.user.id, role, name });
+      const { error: profError } = await sb.from('profiles').insert({ id: data.user.id, role, name });
+      if (profError) {
+        // Maybe profile already exists, try upsert
+        await sb.from('profiles').upsert({ id: data.user.id, role, name });
+      }
       await initApp(data.user);
     }
   } else {
@@ -606,8 +610,18 @@ document.getElementById('authBtn').addEventListener('click', async () => {
 
 async function initApp(user) {
   currentUser = user;
-  const { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single();
-  if (!profile) { document.getElementById('authErr').textContent = 'Профиль не найден'; return; }
+  let { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single();
+  if (!profile) {
+    // Wait a moment and retry once (RLS timing issue)
+    await new Promise(r => setTimeout(r, 800));
+    const { data: profile2 } = await sb.from('profiles').select('*').eq('id', user.id).single();
+    profile = profile2;
+  }
+  if (!profile) {
+    document.getElementById('authErr').textContent = 'Ошибка создания профиля. Попробуй ещё раз.';
+    await sb.auth.signOut();
+    return;
+  }
   currentProfile = profile;
   showScreen(profile.role === 'parent' ? 'parentScreen' : 'childScreen');
   if (profile.role === 'child') {
