@@ -1,0 +1,1308 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Семейные задания</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Fredoka+One&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0F0F1A;
+  --card: #1A1A2E;
+  --card2: #16213E;
+  --accent: #FF6B6B;
+  --accent2: #FFD93D;
+  --green: #6BCB77;
+  --blue: #4D96FF;
+  --purple: #C77DFF;
+  --text: #F0F0FF;
+  --muted: #6B6B8A;
+  --border: rgba(255,255,255,0.07);
+  --radius: 20px;
+  --shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: 'Nunito', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  max-width: 480px;
+  margin: 0 auto;
+  position: relative;
+}
+
+/* ── SCREENS ── */
+.screen { display: none; flex-direction: column; height: 100vh; overflow: hidden; }
+.screen.active { display: flex; }
+
+/* ── AUTH ── */
+#authScreen {
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+  background: linear-gradient(160deg, #0F0F1A 0%, #1A1A2E 100%);
+}
+.auth-logo { font-family: 'Fredoka One', cursive; font-size: 42px; color: var(--accent2); margin-bottom: 6px; text-align: center; }
+.auth-sub { color: var(--muted); font-size: 14px; text-align: center; margin-bottom: 40px; }
+.auth-card { background: var(--card); border-radius: 24px; padding: 28px 24px; width: 100%; border: 1px solid var(--border); }
+.auth-title { font-size: 20px; font-weight: 900; margin-bottom: 20px; text-align: center; }
+.field { margin-bottom: 14px; }
+.field label { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px; }
+.field input, .field select {
+  width: 100%; padding: 13px 16px;
+  background: var(--bg); border: 1.5px solid var(--border);
+  border-radius: 12px; color: var(--text);
+  font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 600;
+  outline: none; transition: border-color 0.2s;
+}
+.field input:focus, .field select:focus { border-color: var(--accent2); }
+.field select option { background: var(--card); }
+.btn {
+  width: 100%; padding: 15px;
+  border: none; border-radius: 14px;
+  font-family: 'Nunito', sans-serif; font-size: 16px; font-weight: 900;
+  cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: linear-gradient(135deg, var(--accent), #FF8E53); color: #fff; }
+.btn-green { background: linear-gradient(135deg, var(--green), #4CAF50); color: #fff; }
+.btn-blue { background: linear-gradient(135deg, var(--blue), #357ABD); color: #fff; }
+.btn-ghost { background: transparent; color: var(--muted); font-size: 14px; padding: 10px; }
+.btn-sm {
+  padding: 8px 16px; font-size: 13px; font-weight: 800;
+  border: none; border-radius: 10px; cursor: pointer; font-family: 'Nunito', sans-serif;
+}
+.btn-approve { background: var(--green); color: #fff; }
+.btn-reject { background: var(--accent); color: #fff; }
+.auth-switch { text-align: center; margin-top: 16px; color: var(--muted); font-size: 14px; }
+.auth-switch span { color: var(--accent2); cursor: pointer; font-weight: 800; }
+.err { color: var(--accent); font-size: 13px; text-align: center; margin-top: 10px; min-height: 18px; }
+
+/* ── LAYOUT ── */
+.topbar {
+  padding: 16px 20px 12px;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+.topbar-title { font-family: 'Fredoka One', cursive; font-size: 22px; color: var(--accent2); }
+.topbar-right { display: flex; align-items: center; gap: 10px; }
+.avatar-btn {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--card2); border: 1.5px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; cursor: pointer;
+}
+.logout-btn { font-size: 18px; cursor: pointer; opacity: 0.6; }
+
+.scroll-area { flex: 1; overflow-y: auto; padding: 16px; -webkit-overflow-scrolling: touch; }
+.scroll-area::-webkit-scrollbar { display: none; }
+
+/* ── BOTTOM NAV ── */
+.bottom-nav {
+  display: flex; border-top: 1px solid var(--border);
+  background: var(--card); flex-shrink: 0;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.nav-item {
+  flex: 1; padding: 10px 4px 8px;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  cursor: pointer; transition: all 0.2s; position: relative;
+}
+.nav-item .nav-icon { font-size: 22px; transition: transform 0.2s; }
+.nav-item .nav-label { font-size: 10px; font-weight: 700; color: var(--muted); }
+.nav-item.active .nav-label { color: var(--accent2); }
+.nav-item.active .nav-icon { transform: scale(1.15); }
+.nav-badge {
+  position: absolute; top: 6px; right: calc(50% - 18px);
+  background: var(--accent); color: #fff;
+  font-size: 10px; font-weight: 900; min-width: 16px; height: 16px;
+  border-radius: 8px; display: flex; align-items: center; justify-content: center;
+  padding: 0 4px;
+}
+
+/* ── CARDS ── */
+.card {
+  background: var(--card); border-radius: var(--radius);
+  border: 1px solid var(--border); padding: 18px;
+  margin-bottom: 12px;
+}
+.card-sm { padding: 14px 16px; margin-bottom: 10px; }
+
+/* ── HERO BALANCE ── */
+.hero {
+  background: linear-gradient(135deg, #1A1A3E, #2D1B69);
+  border-radius: 24px; padding: 24px 20px;
+  margin-bottom: 16px; position: relative; overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.hero::before {
+  content: '';
+  position: absolute; top: -40px; right: -40px;
+  width: 140px; height: 140px;
+  background: radial-gradient(circle, rgba(255,217,61,0.15), transparent 70%);
+  border-radius: 50%;
+}
+.hero-label { font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+.hero-amount { font-family: 'Fredoka One', cursive; font-size: 48px; color: var(--accent2); line-height: 1; margin-bottom: 4px; }
+.hero-sub { font-size: 13px; color: rgba(255,255,255,0.5); }
+.hero-row { display: flex; gap: 12px; margin-top: 16px; }
+.hero-stat { flex: 1; background: rgba(255,255,255,0.06); border-radius: 12px; padding: 10px 12px; }
+.hero-stat-val { font-size: 18px; font-weight: 900; color: var(--text); }
+.hero-stat-lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+/* ── STREAK ── */
+.streak-bar {
+  background: var(--card); border-radius: 16px; padding: 14px 16px;
+  margin-bottom: 12px; border: 1px solid var(--border);
+  display: flex; align-items: center; gap: 12px;
+}
+.streak-fire { font-size: 28px; }
+.streak-info { flex: 1; }
+.streak-num { font-size: 20px; font-weight: 900; }
+.streak-lbl { font-size: 12px; color: var(--muted); }
+.streak-dots { display: flex; gap: 4px; }
+.streak-dot { width: 28px; height: 6px; border-radius: 3px; background: var(--border); }
+.streak-dot.on { background: var(--accent2); }
+
+/* ── XP / LEVEL ── */
+.level-bar-wrap { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; margin-top: 6px; }
+.level-bar { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--purple), var(--blue)); transition: width 0.8s cubic-bezier(.34,1.56,.64,1); }
+
+/* ── TASK CARDS ── */
+.task-card {
+  background: var(--card); border-radius: 18px;
+  border: 1.5px solid var(--border); padding: 14px 16px;
+  margin-bottom: 10px; cursor: pointer;
+  display: flex; align-items: center; gap: 14px;
+  transition: all 0.2s; position: relative; overflow: hidden;
+}
+.task-card:active { transform: scale(0.98); }
+.task-card.pending { border-color: rgba(255,217,61,0.4); background: linear-gradient(135deg, #1A1A2E, #1A1800); }
+.task-card.approved { border-color: rgba(107,203,119,0.4); opacity: 0.6; }
+.task-emoji-wrap {
+  width: 52px; height: 52px; border-radius: 14px;
+  background: var(--card2); display: flex; align-items: center; justify-content: center;
+  font-size: 26px; flex-shrink: 0;
+}
+.task-info { flex: 1; min-width: 0; }
+.task-name { font-size: 15px; font-weight: 800; }
+.task-desc { font-size: 12px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.task-meta { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.task-reward { font-size: 15px; font-weight: 900; color: var(--accent2); }
+.task-xp { font-size: 12px; font-weight: 700; color: var(--purple); }
+.task-status { font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 6px; }
+.status-pending { background: rgba(255,217,61,0.15); color: var(--accent2); }
+.status-approved { background: rgba(107,203,119,0.15); color: var(--green); }
+.status-rejected { background: rgba(255,107,107,0.15); color: var(--accent); }
+
+/* ── ACHIEVEMENTS ── */
+.achievements-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+.ach-item {
+  background: var(--card); border-radius: 14px; padding: 14px 8px;
+  text-align: center; border: 1.5px solid var(--border);
+  transition: all 0.2s;
+}
+.ach-item.earned { border-color: rgba(255,217,61,0.5); background: linear-gradient(135deg, #1A1A2E, #1A1600); }
+.ach-emoji { font-size: 28px; margin-bottom: 6px; }
+.ach-name { font-size: 11px; font-weight: 800; line-height: 1.3; }
+.ach-desc { font-size: 10px; color: var(--muted); margin-top: 3px; line-height: 1.3; }
+.ach-item:not(.earned) { opacity: 0.4; filter: grayscale(0.8); }
+
+/* ── SECTION HEADER ── */
+.sec-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; margin-top: 4px; }
+.sec-title { font-size: 16px; font-weight: 900; }
+.sec-count { font-size: 12px; color: var(--muted); font-weight: 700; }
+
+/* ── MODAL ── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7); backdrop-filter: blur(6px);
+  z-index: 200; align-items: flex-end; justify-content: center;
+}
+.modal-overlay.active { display: flex; }
+.modal {
+  background: var(--card); border-radius: 28px 28px 0 0;
+  padding: 0 0 40px; width: 100%; max-width: 480px;
+  animation: slideUp 0.3s cubic-bezier(.34,1.56,.64,1);
+  max-height: 92vh; overflow-y: auto;
+}
+.modal::-webkit-scrollbar { display: none; }
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.modal-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 12px auto 20px; }
+.modal-body { padding: 0 24px; }
+.modal-emoji { font-size: 52px; text-align: center; margin-bottom: 10px; }
+.modal-title { font-size: 22px; font-weight: 900; text-align: center; margin-bottom: 6px; }
+.modal-subtitle { font-size: 14px; color: var(--muted); text-align: center; margin-bottom: 20px; }
+.modal-reward-big { font-family: 'Fredoka One', cursive; font-size: 36px; color: var(--accent2); text-align: center; margin-bottom: 20px; }
+
+/* Photo upload */
+.photo-section { margin-bottom: 16px; }
+.photo-label { font-size: 13px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+.photo-upload {
+  border: 2px dashed var(--border); border-radius: 14px;
+  padding: 20px; text-align: center; cursor: pointer;
+  transition: border-color 0.2s; position: relative;
+}
+.photo-upload:active { border-color: var(--accent2); }
+.photo-upload input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.photo-upload-icon { font-size: 28px; margin-bottom: 6px; }
+.photo-upload-text { font-size: 13px; color: var(--muted); font-weight: 600; }
+.photo-preview { width: 100%; border-radius: 12px; max-height: 160px; object-fit: cover; display: none; }
+
+/* ── PARENT TABS ── */
+.tabs { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 2px; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab {
+  padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 800;
+  background: var(--card); border: 1.5px solid var(--border); color: var(--muted);
+  cursor: pointer; white-space: nowrap; transition: all 0.2s;
+}
+.tab.active { background: var(--accent2); color: #000; border-color: transparent; }
+
+/* ── REVIEW CARD ── */
+.review-card {
+  background: var(--card); border-radius: 18px; border: 1px solid var(--border);
+  padding: 16px; margin-bottom: 12px;
+}
+.review-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.review-emoji { font-size: 28px; }
+.review-info { flex: 1; }
+.review-task { font-size: 15px; font-weight: 900; }
+.review-child { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.review-amount { font-size: 16px; font-weight: 900; color: var(--accent2); }
+.review-photos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.review-photo { border-radius: 10px; width: 100%; aspect-ratio: 1; object-fit: cover; background: var(--card2); display: flex; align-items: center; justify-content: center; font-size: 24px; color: var(--muted); }
+.review-photo img { width: 100%; height: 100%; object-fit: cover; border-radius: 10px; }
+.review-actions { display: flex; gap: 8px; }
+.review-actions .btn-sm { flex: 1; padding: 10px; }
+.comment-input {
+  width: 100%; padding: 10px 14px; background: var(--bg);
+  border: 1.5px solid var(--border); border-radius: 10px;
+  color: var(--text); font-family: 'Nunito', sans-serif; font-size: 14px;
+  outline: none; margin-bottom: 8px; resize: none;
+}
+.comment-input:focus { border-color: var(--accent); }
+
+/* ── TASK EDITOR ── */
+.task-edit-card {
+  background: var(--card); border-radius: 16px; border: 1px solid var(--border);
+  padding: 14px 16px; margin-bottom: 10px;
+  display: flex; align-items: center; gap: 12px;
+}
+.task-edit-emoji { font-size: 28px; width: 44px; text-align: center; }
+.task-edit-info { flex: 1; }
+.task-edit-name { font-size: 14px; font-weight: 800; }
+.task-edit-reward { font-size: 13px; color: var(--accent2); font-weight: 700; margin-top: 2px; }
+.task-edit-actions { display: flex; gap: 6px; }
+.icon-btn {
+  width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--card2); display: flex; align-items: center; justify-content: center;
+  font-size: 16px; cursor: pointer; transition: all 0.2s;
+}
+.icon-btn:active { transform: scale(0.92); }
+
+/* ── WITHDRAWAL ── */
+.withdraw-card {
+  background: linear-gradient(135deg, #1A2E1A, #0F1A0F);
+  border: 1.5px solid rgba(107,203,119,0.3);
+  border-radius: 18px; padding: 16px; margin-bottom: 10px;
+}
+.withdraw-amount { font-family: 'Fredoka One', cursive; font-size: 28px; color: var(--green); }
+.withdraw-date { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+/* ── HISTORY ── */
+.history-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 0; border-bottom: 1px solid var(--border);
+}
+.history-item:last-child { border-bottom: none; }
+.history-emoji { font-size: 22px; width: 36px; text-align: center; }
+.history-info { flex: 1; }
+.history-name { font-size: 14px; font-weight: 700; }
+.history-date { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.history-amount { font-size: 15px; font-weight: 900; color: var(--green); }
+
+/* ── STATS ── */
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.stat-card { background: var(--card); border-radius: 16px; border: 1px solid var(--border); padding: 16px 14px; }
+.stat-val { font-family: 'Fredoka One', cursive; font-size: 28px; }
+.stat-lbl { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+/* ── CONFETTI ── */
+.confetti-wrap { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 999; overflow: hidden; }
+.confetti-piece { position: absolute; top: -20px; border-radius: 2px; animation: fall linear forwards; }
+@keyframes fall { to { transform: translateY(110vh) rotate(720deg); opacity: 0; } }
+
+/* ── LOADING ── */
+.loading { display: flex; align-items: center; justify-content: center; padding: 40px; color: var(--muted); font-size: 14px; font-weight: 700; gap: 10px; }
+.spinner { width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent2); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.empty { text-align: center; padding: 32px 20px; color: var(--muted); }
+.empty-icon { font-size: 40px; margin-bottom: 10px; }
+.empty-text { font-size: 14px; font-weight: 600; }
+
+/* ── BONUS MODAL ── */
+.bonus-amount-input {
+  width: 100%; padding: 14px; text-align: center;
+  background: var(--bg); border: 2px solid var(--border);
+  border-radius: 14px; color: var(--accent2);
+  font-family: 'Fredoka One', cursive; font-size: 32px;
+  outline: none; margin-bottom: 12px;
+}
+.bonus-amount-input:focus { border-color: var(--accent2); }
+</style>
+</head>
+<body>
+
+<div class="confetti-wrap" id="confetti"></div>
+
+<!-- ══════════════ AUTH SCREEN ══════════════ -->
+<div class="screen active" id="authScreen">
+  <div style="width:100%; max-width:480px; margin:0 auto; padding: 48px 24px 32px;">
+    <div class="auth-logo">⭐ КопиКа</div>
+    <div class="auth-sub">Выполняй задания — зарабатывай деньги!</div>
+    <div class="auth-card">
+      <div class="auth-title" id="authTitle">Войти</div>
+      <div id="registerFields" style="display:none">
+        <div class="field">
+          <label>Твоё имя</label>
+          <input type="text" id="regName" placeholder="Например: Саша">
+        </div>
+        <div class="field">
+          <label>Кто ты?</label>
+          <select id="regRole">
+            <option value="child">👶 Ребёнок</option>
+            <option value="parent">👨 Родитель</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="authEmail" placeholder="email@example.com">
+      </div>
+      <div class="field">
+        <label>Пароль</label>
+        <input type="password" id="authPassword" placeholder="••••••••">
+      </div>
+      <button class="btn btn-primary" id="authBtn">Войти</button>
+      <div class="err" id="authErr"></div>
+      <div class="auth-switch" id="authSwitch">
+        Нет аккаунта? <span id="authToggle">Зарегистрироваться</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ CHILD SCREEN ══════════════ -->
+<div class="screen" id="childScreen">
+  <div class="topbar">
+    <div class="topbar-title">⭐ КопиКа</div>
+    <div class="topbar-right">
+      <div class="avatar-btn" id="childAvatar">😊</div>
+      <div class="logout-btn" id="childLogout">🚪</div>
+    </div>
+  </div>
+
+  <!-- Tab content -->
+  <div class="scroll-area" id="childContent"></div>
+
+  <div class="bottom-nav">
+    <div class="nav-item active" data-tab="home">
+      <div class="nav-icon">🏠</div>
+      <div class="nav-label">Главная</div>
+    </div>
+    <div class="nav-item" data-tab="tasks">
+      <div class="nav-icon">⚡</div>
+      <div class="nav-label">Задания</div>
+    </div>
+    <div class="nav-item" data-tab="achievements">
+      <div class="nav-icon">🏆</div>
+      <div class="nav-label">Награды</div>
+    </div>
+    <div class="nav-item" data-tab="history">
+      <div class="nav-icon">📋</div>
+      <div class="nav-label">История</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ PARENT SCREEN ══════════════ -->
+<div class="screen" id="parentScreen">
+  <div class="topbar">
+    <div class="topbar-title">👨 Панель родителя</div>
+    <div class="topbar-right">
+      <div class="nav-badge" id="parentBadge" style="position:relative;top:0;right:0;display:none"></div>
+      <div class="logout-btn" id="parentLogout">🚪</div>
+    </div>
+  </div>
+
+  <div class="scroll-area" id="parentContent"></div>
+
+  <div class="bottom-nav">
+    <div class="nav-item active" data-ptab="review">
+      <div class="nav-icon">🔍</div>
+      <div class="nav-label">Проверка</div>
+      <div class="nav-badge" id="reviewBadge" style="display:none"></div>
+    </div>
+    <div class="nav-item" data-ptab="tasks">
+      <div class="nav-icon">📝</div>
+      <div class="nav-label">Задания</div>
+    </div>
+    <div class="nav-item" data-ptab="wallet">
+      <div class="nav-icon">💰</div>
+      <div class="nav-label">Кошелёк</div>
+    </div>
+    <div class="nav-item" data-ptab="stats">
+      <div class="nav-icon">📊</div>
+      <div class="nav-label">Статистика</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ TASK MODAL (Child) ══════════════ -->
+<div class="modal-overlay" id="taskModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-body">
+      <div class="modal-emoji" id="tmEmoji"></div>
+      <div class="modal-title" id="tmTitle"></div>
+      <div class="modal-subtitle" id="tmDesc"></div>
+      <div class="modal-reward-big" id="tmReward"></div>
+
+      <div class="photo-section">
+        <div class="photo-label">📸 Фото ДО</div>
+        <div class="photo-upload" id="uploadBefore">
+          <input type="file" accept="image/*,video/*" id="fileBefore" capture="environment">
+          <div class="photo-upload-icon">📷</div>
+          <div class="photo-upload-text">Нажми чтобы добавить фото</div>
+          <img class="photo-preview" id="previewBefore">
+        </div>
+      </div>
+
+      <div class="photo-section">
+        <div class="photo-label">✅ Фото ПОСЛЕ</div>
+        <div class="photo-upload" id="uploadAfter">
+          <input type="file" accept="image/*,video/*" id="fileAfter" capture="environment">
+          <div class="photo-upload-icon">📷</div>
+          <div class="photo-upload-text">Нажми чтобы добавить фото</div>
+          <img class="photo-preview" id="previewAfter">
+        </div>
+      </div>
+
+      <button class="btn btn-green" id="submitTask" style="margin-bottom:12px">
+        🚀 Отправить на проверку
+      </button>
+      <button class="btn btn-ghost" id="cancelTask">Отмена</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ EDIT TASK MODAL (Parent) ══════════════ -->
+<div class="modal-overlay" id="editTaskModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-body">
+      <div class="modal-title" id="etTitle">Редактировать задание</div>
+      <div style="height:16px"></div>
+      <div class="field"><label>Emoji</label><input type="text" id="etEmoji" maxlength="2" style="font-size:24px;text-align:center"></div>
+      <div class="field"><label>Название</label><input type="text" id="etName"></div>
+      <div class="field"><label>Описание</label><input type="text" id="etDesc"></div>
+      <div class="field"><label>Награда (₽)</label><input type="number" id="etReward" min="1"></div>
+      <div class="field"><label>Опыт (XP)</label><input type="number" id="etXp" min="1"></div>
+      <button class="btn btn-primary" id="etSave" style="margin-bottom:10px">Сохранить</button>
+      <button class="btn btn-ghost" id="etCancel">Отмена</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ BONUS MODAL (Parent) ══════════════ -->
+<div class="modal-overlay" id="bonusModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-body">
+      <div class="modal-emoji">🎁</div>
+      <div class="modal-title">Начислить бонус</div>
+      <div class="modal-subtitle" id="bonusChildName"></div>
+      <div style="height:12px"></div>
+      <input type="number" class="bonus-amount-input" id="bonusAmount" placeholder="0" min="1">
+      <div class="field"><label>Сообщение ребёнку</label><input type="text" id="bonusMsg" placeholder="Молодец, помог бабушке!"></div>
+      <button class="btn btn-green" id="bonusSend" style="margin-bottom:10px">🎁 Начислить</button>
+      <button class="btn btn-ghost" id="bonusCancel">Отмена</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ REJECT MODAL (Parent) ══════════════ -->
+<div class="modal-overlay" id="rejectModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-body">
+      <div class="modal-emoji">❌</div>
+      <div class="modal-title">Причина отклонения</div>
+      <div style="height:12px"></div>
+      <textarea class="comment-input" id="rejectComment" rows="3" placeholder="Напиши почему отклонил..."></textarea>
+      <button class="btn btn-reject" id="rejectSend" style="margin-bottom:10px">Отклонить</button>
+      <button class="btn btn-ghost" id="rejectCancel">Отмена</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://nqjxnnqswjayqfqzebct.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xanhubnFzd2pheXFmcXplYmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTU2NDEsImV4cCI6MjA5NjI3MTY0MX0.6yzQEJn2z86FjwT9ql8qQtKqSnIDx6cYDeYQGWX9yCo';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = null;
+let currentProfile = null;
+let currentChildTab = 'home';
+let currentParentTab = 'review';
+let editingTask = null;
+let pendingRejectId = null;
+let bonusChildId = null;
+let activeTasks = [];
+let selectedTaskForSubmit = null;
+
+// ════════ AUTH ════════
+let isRegister = false;
+document.getElementById('authToggle').addEventListener('click', () => {
+  isRegister = !isRegister;
+  document.getElementById('registerFields').style.display = isRegister ? 'block' : 'none';
+  document.getElementById('authTitle').textContent = isRegister ? 'Регистрация' : 'Войти';
+  document.getElementById('authBtn').textContent = isRegister ? 'Создать аккаунт' : 'Войти';
+  document.getElementById('authToggle').textContent = isRegister ? 'Уже есть аккаунт' : 'Зарегистрироваться';
+  document.getElementById('authSwitch').firstChild.textContent = isRegister ? 'Есть аккаунт? ' : 'Нет аккаунта? ';
+  document.getElementById('authErr').textContent = '';
+});
+
+document.getElementById('authBtn').addEventListener('click', async () => {
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  const errEl = document.getElementById('authErr');
+  errEl.textContent = '';
+  if (!email || !password) { errEl.textContent = 'Заполни все поля'; return; }
+
+  if (isRegister) {
+    const name = document.getElementById('regName').value.trim();
+    const role = document.getElementById('regRole').value;
+    if (!name) { errEl.textContent = 'Введи имя'; return; }
+    const { data, error } = await sb.auth.signUp({ email, password });
+    if (error) { errEl.textContent = error.message; return; }
+    if (data.user) {
+      await sb.from('profiles').insert({ id: data.user.id, role, name });
+      await initApp(data.user);
+    }
+  } else {
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) { errEl.textContent = 'Неверный email или пароль'; return; }
+    await initApp(data.user);
+  }
+});
+
+async function initApp(user) {
+  currentUser = user;
+  const { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single();
+  if (!profile) { document.getElementById('authErr').textContent = 'Профиль не найден'; return; }
+  currentProfile = profile;
+  showScreen(profile.role === 'parent' ? 'parentScreen' : 'childScreen');
+  if (profile.role === 'child') {
+    document.getElementById('childAvatar').textContent = profile.avatar || '😊';
+    renderChildTab('home');
+  } else {
+    renderParentTab('review');
+  }
+}
+
+// Check existing session
+sb.auth.getSession().then(({ data: { session } }) => {
+  if (session) initApp(session.user);
+});
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+document.getElementById('childLogout').addEventListener('click', logout);
+document.getElementById('parentLogout').addEventListener('click', logout);
+async function logout() {
+  await sb.auth.signOut();
+  currentUser = null; currentProfile = null;
+  showScreen('authScreen');
+}
+
+// ════════ CHILD NAVIGATION ════════
+document.querySelectorAll('#childScreen .nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('#childScreen .nav-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+    renderChildTab(item.dataset.tab);
+  });
+});
+
+async function renderChildTab(tab) {
+  currentChildTab = tab;
+  const content = document.getElementById('childContent');
+  content.innerHTML = '<div class="loading"><div class="spinner"></div> Загрузка...</div>';
+
+  if (tab === 'home') await renderChildHome(content);
+  else if (tab === 'tasks') await renderChildTasks(content);
+  else if (tab === 'achievements') await renderChildAchievements(content);
+  else if (tab === 'history') await renderChildHistory(content);
+}
+
+async function renderChildHome(content) {
+  const [{ data: completions }, { data: bonuses }, { data: withdrawals }, { data: achievements }] = await Promise.all([
+    sb.from('completions').select('*').eq('child_id', currentUser.id).eq('status', 'approved'),
+    sb.from('bonuses').select('*').eq('child_id', currentUser.id),
+    sb.from('withdrawals').select('*').eq('child_id', currentUser.id).eq('status', 'paid'),
+    sb.from('child_achievements').select('*').eq('child_id', currentUser.id),
+  ]);
+
+  const totalEarned = (completions || []).reduce((s, c) => s + c.reward, 0) + (bonuses || []).reduce((s, b) => s + b.amount, 0);
+  const totalWithdrawn = (withdrawals || []).reduce((s, w) => s + w.amount, 0);
+  const balance = totalEarned - totalWithdrawn;
+  const totalXP = (completions || []).reduce((s, c) => s + c.xp, 0) + (bonuses || []).reduce((s, b) => s + (b.xp || 0), 0);
+
+  const today = new Date().toISOString().split('T')[0];
+  const todayEarned = (completions || []).filter(c => c.created_at?.startsWith(today)).reduce((s, c) => s + c.reward, 0);
+
+  // Streak
+  const streak = calcStreak(completions || []);
+
+  // Level
+  const { level, levelName, xpInLevel, xpForNext } = calcLevel(totalXP);
+
+  // Pending withdrawals
+  const { data: pendingW } = await sb.from('withdrawals').select('*').eq('child_id', currentUser.id).eq('status', 'pending');
+
+  const streakDots = Array.from({length: 7}, (_, i) => `<div class="streak-dot ${i < streak % 7 ? 'on' : ''}"></div>`).join('');
+
+  content.innerHTML = `
+    <div class="hero">
+      <div class="hero-label">Мой кошелёк</div>
+      <div class="hero-amount">${balance} ₽</div>
+      <div class="hero-sub">Заработано всего: ${totalEarned} ₽</div>
+      <div class="hero-row">
+        <div class="hero-stat">
+          <div class="hero-stat-val">+${todayEarned} ₽</div>
+          <div class="hero-stat-lbl">Сегодня</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-val">${achievements?.length || 0} 🏆</div>
+          <div class="hero-stat-lbl">Наград</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="streak-bar">
+      <div class="streak-fire">🔥</div>
+      <div class="streak-info">
+        <div class="streak-num">${streak} дней подряд</div>
+        <div class="streak-lbl">Текущая серия</div>
+        <div class="streak-dots" style="margin-top:6px">${streakDots}</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div>
+          <div style="font-weight:900;font-size:15px">${levelName}</div>
+          <div style="font-size:12px;color:var(--muted)">Уровень ${level} • ${totalXP} XP</div>
+        </div>
+        <div style="font-size:28px">⚡</div>
+      </div>
+      <div class="level-bar-wrap">
+        <div class="level-bar" style="width:${Math.min(100, Math.round(xpInLevel/xpForNext*100))}%"></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">До следующего уровня: ${xpForNext - xpInLevel} XP</div>
+    </div>
+
+    ${balance > 0 ? `
+    <div style="margin-bottom:16px">
+      <button class="btn btn-green" id="withdrawBtn">💸 Вывести деньги (${balance} ₽)</button>
+      ${(pendingW?.length > 0) ? `<div style="text-align:center;font-size:13px;color:var(--accent2);margin-top:8px">⏳ Запрос на ${pendingW[0].amount} ₽ ожидает родителя</div>` : ''}
+    </div>` : ''}
+  `;
+
+  document.getElementById('withdrawBtn')?.addEventListener('click', async () => {
+    if (pendingW?.length > 0) { alert('Уже есть запрос на вывод, подожди!'); return; }
+    if (confirm(`Запросить вывод ${balance} ₽?`)) {
+      await sb.from('withdrawals').insert({ child_id: currentUser.id, amount: balance });
+      renderChildTab('home');
+    }
+  });
+}
+
+async function renderChildTasks(content) {
+  const [{ data: tasks }, { data: todayCompletions }] = await Promise.all([
+    sb.from('tasks').select('*').eq('is_active', true).order('created_at'),
+    sb.from('completions').select('*').eq('child_id', currentUser.id)
+      .gte('created_at', new Date().toISOString().split('T')[0]),
+  ]);
+  activeTasks = tasks || [];
+
+  const doneIds = new Set((todayCompletions || []).filter(c => c.status !== 'rejected').map(c => c.task_id));
+  const pending = (todayCompletions || []).filter(c => c.status === 'pending').map(c => c.task_id);
+  const pendingSet = new Set(pending);
+
+  const available = activeTasks.filter(t => !doneIds.has(t.id));
+  const done = activeTasks.filter(t => doneIds.has(t.id));
+
+  content.innerHTML = `
+    <div class="sec-header">
+      <div class="sec-title">⚡ Доступные задания</div>
+      <div class="sec-count">${available.length} заданий</div>
+    </div>
+    ${available.length === 0 ? `<div class="empty"><div class="empty-icon">🎉</div><div class="empty-text">Все задания выполнены!</div></div>` : ''}
+    ${available.map(t => `
+      <div class="task-card" data-id="${t.id}">
+        <div class="task-emoji-wrap">${t.emoji}</div>
+        <div class="task-info">
+          <div class="task-name">${t.name}</div>
+          <div class="task-desc">${t.description || ''}</div>
+          <div class="task-meta">
+            <div class="task-reward">+${t.reward} ₽</div>
+            <div class="task-xp">+${t.xp} XP</div>
+            ${pendingSet.has(t.id) ? '<span class="task-status status-pending">На проверке</span>' : ''}
+          </div>
+        </div>
+      </div>
+    `).join('')}
+
+    ${done.length > 0 ? `
+    <div class="sec-header" style="margin-top:8px">
+      <div class="sec-title">✅ Выполнено сегодня</div>
+    </div>
+    ${done.map(t => {
+      const comp = (todayCompletions || []).find(c => c.task_id === t.id);
+      return `
+        <div class="task-card approved">
+          <div class="task-emoji-wrap">${t.emoji}</div>
+          <div class="task-info">
+            <div class="task-name">${t.name}</div>
+            <div class="task-meta">
+              <div class="task-reward">+${t.reward} ₽</div>
+              <span class="task-status status-${comp?.status || 'approved'}">${comp?.status === 'pending' ? 'На проверке' : comp?.status === 'rejected' ? 'Отклонено' : 'Одобрено'}</span>
+            </div>
+            ${comp?.parent_comment ? `<div style="font-size:12px;color:var(--accent);margin-top:4px">💬 ${comp.parent_comment}</div>` : ''}
+          </div>
+        </div>`;
+    }).join('')}` : ''}
+  `;
+
+  content.querySelectorAll('.task-card[data-id]').forEach(card => {
+    const taskId = card.dataset.id;
+    const task = activeTasks.find(t => t.id === taskId);
+    if (task && !pendingSet.has(taskId)) {
+      card.addEventListener('click', () => openTaskModal(task));
+    }
+  });
+}
+
+async function renderChildAchievements(content) {
+  const [{ data: allAch }, { data: earned }] = await Promise.all([
+    sb.from('achievements').select('*'),
+    sb.from('child_achievements').select('*').eq('child_id', currentUser.id),
+  ]);
+  const earnedIds = new Set((earned || []).map(e => e.achievement_id));
+
+  content.innerHTML = `
+    <div class="sec-header">
+      <div class="sec-title">🏆 Достижения</div>
+      <div class="sec-count">${earnedIds.size}/${allAch?.length || 0}</div>
+    </div>
+    <div class="achievements-grid">
+      ${(allAch || []).map(a => `
+        <div class="ach-item ${earnedIds.has(a.id) ? 'earned' : ''}">
+          <div class="ach-emoji">${a.emoji}</div>
+          <div class="ach-name">${a.name}</div>
+          <div class="ach-desc">${a.description}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+async function renderChildHistory(content) {
+  const { data: completions } = await sb.from('completions').select('*, tasks(emoji, name)').eq('child_id', currentUser.id).eq('status', 'approved').order('created_at', { ascending: false }).limit(30);
+  const { data: bonuses } = await sb.from('bonuses').select('*').eq('child_id', currentUser.id).order('created_at', { ascending: false });
+
+  const items = [
+    ...(completions || []).map(c => ({ type: 'task', emoji: c.tasks?.emoji || '⭐', name: c.tasks?.name || 'Задание', amount: c.reward, date: c.created_at })),
+    ...(bonuses || []).map(b => ({ type: 'bonus', emoji: '🎁', name: b.message || 'Бонус от родителя', amount: b.amount, date: b.created_at })),
+  ].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  if (items.length === 0) {
+    content.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">История пока пуста</div></div>`;
+    return;
+  }
+
+  content.innerHTML = `
+    <div class="sec-header"><div class="sec-title">📋 История заработков</div></div>
+    <div class="card">
+      ${items.map(item => `
+        <div class="history-item">
+          <div class="history-emoji">${item.emoji}</div>
+          <div class="history-info">
+            <div class="history-name">${item.name}</div>
+            <div class="history-date">${formatDate(item.date)}</div>
+          </div>
+          <div class="history-amount">+${item.amount} ₽</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+// ════════ TASK MODAL ════════
+function openTaskModal(task) {
+  selectedTaskForSubmit = task;
+  document.getElementById('tmEmoji').textContent = task.emoji;
+  document.getElementById('tmTitle').textContent = task.name;
+  document.getElementById('tmDesc').textContent = task.description || '';
+  document.getElementById('tmReward').textContent = `+${task.reward} ₽ · +${task.xp} XP`;
+  document.getElementById('previewBefore').style.display = 'none';
+  document.getElementById('previewAfter').style.display = 'none';
+  document.getElementById('fileBefore').value = '';
+  document.getElementById('fileAfter').value = '';
+  document.getElementById('taskModal').classList.add('active');
+}
+
+['Before', 'After'].forEach(side => {
+  document.getElementById('file' + side).addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const preview = document.getElementById('preview' + side);
+    preview.src = URL.createObjectURL(file);
+    preview.style.display = 'block';
+    document.querySelector('#upload' + side + ' .photo-upload-icon').style.display = 'none';
+    document.querySelector('#upload' + side + ' .photo-upload-text').style.display = 'none';
+  });
+});
+
+document.getElementById('cancelTask').addEventListener('click', () => {
+  document.getElementById('taskModal').classList.remove('active');
+});
+
+document.getElementById('submitTask').addEventListener('click', async () => {
+  const task = selectedTaskForSubmit;
+  if (!task) return;
+  const fileBefore = document.getElementById('fileBefore').files[0];
+  const fileAfter = document.getElementById('fileAfter').files[0];
+
+  if (!fileBefore || !fileAfter) {
+    alert('Загрузи оба фото — до и после!');
+    return;
+  }
+
+  const btn = document.getElementById('submitTask');
+  btn.textContent = '⏳ Загружаю...';
+  btn.disabled = true;
+
+  try {
+    const uid = currentUser.id;
+    const ts = Date.now();
+    const pathBefore = `${uid}/${task.id}_before_${ts}`;
+    const pathAfter = `${uid}/${task.id}_after_${ts}`;
+
+    await sb.storage.from('task-photos').upload(pathBefore, fileBefore);
+    await sb.storage.from('task-photos').upload(pathAfter, fileAfter);
+
+    const { data: { publicUrl: urlBefore } } = sb.storage.from('task-photos').getPublicUrl(pathBefore);
+    const { data: { publicUrl: urlAfter } } = sb.storage.from('task-photos').getPublicUrl(pathAfter);
+
+    await sb.from('completions').insert({
+      task_id: task.id,
+      child_id: uid,
+      status: 'pending',
+      photo_before: urlBefore,
+      photo_after: urlAfter,
+      reward: task.reward,
+      xp: task.xp,
+    });
+
+    document.getElementById('taskModal').classList.remove('active');
+    shootConfetti();
+    renderChildTab('tasks');
+  } catch (err) {
+    alert('Ошибка: ' + err.message);
+  } finally {
+    btn.textContent = '🚀 Отправить на проверку';
+    btn.disabled = false;
+  }
+});
+
+// ════════ PARENT NAVIGATION ════════
+document.querySelectorAll('#parentScreen .nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('#parentScreen .nav-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+    renderParentTab(item.dataset.ptab);
+  });
+});
+
+async function renderParentTab(tab) {
+  currentParentTab = tab;
+  const content = document.getElementById('parentContent');
+  content.innerHTML = '<div class="loading"><div class="spinner"></div> Загрузка...</div>';
+  if (tab === 'review') await renderParentReview(content);
+  else if (tab === 'tasks') await renderParentTasks(content);
+  else if (tab === 'wallet') await renderParentWallet(content);
+  else if (tab === 'stats') await renderParentStats(content);
+}
+
+async function renderParentReview(content) {
+  const { data: pending } = await sb.from('completions')
+    .select('*, tasks(emoji, name, reward), profiles(name)')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false });
+
+  const count = pending?.length || 0;
+  const badge = document.getElementById('reviewBadge');
+  badge.textContent = count;
+  badge.style.display = count > 0 ? 'flex' : 'none';
+
+  if (count === 0) {
+    content.innerHTML = `<div class="empty"><div class="empty-icon">🎉</div><div class="empty-text">Нет заданий на проверке</div></div>`;
+    return;
+  }
+
+  content.innerHTML = `
+    <div class="sec-header">
+      <div class="sec-title">🔍 На проверке</div>
+      <div class="sec-count">${count} заданий</div>
+    </div>
+    ${(pending || []).map(c => `
+      <div class="review-card" data-id="${c.id}">
+        <div class="review-header">
+          <div class="review-emoji">${c.tasks?.emoji || '⭐'}</div>
+          <div class="review-info">
+            <div class="review-task">${c.tasks?.name || 'Задание'}</div>
+            <div class="review-child">👶 ${c.profiles?.name || 'Ребёнок'} · ${formatDate(c.created_at)}</div>
+          </div>
+          <div class="review-amount">+${c.reward} ₽</div>
+        </div>
+        <div class="review-photos">
+          <div class="review-photo">${c.photo_before ? `<img src="${c.photo_before}" alt="До">` : '📷 До'}</div>
+          <div class="review-photo">${c.photo_after ? `<img src="${c.photo_after}" alt="После">` : '📷 После'}</div>
+        </div>
+        <div class="review-actions">
+          <button class="btn-sm btn-approve approve-btn" data-id="${c.id}" data-child="${c.child_id}" data-task="${c.tasks?.name}">✅ Принять</button>
+          <button class="btn-sm btn-reject reject-btn" data-id="${c.id}">❌ Отклонить</button>
+        </div>
+      </div>
+    `).join('')}
+  `;
+
+  content.querySelectorAll('.approve-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await sb.from('completions').update({ status: 'approved' }).eq('id', btn.dataset.id);
+      await checkAchievements(btn.dataset.child);
+      shootConfetti();
+      renderParentTab('review');
+    });
+  });
+
+  content.querySelectorAll('.reject-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      pendingRejectId = btn.dataset.id;
+      document.getElementById('rejectComment').value = '';
+      document.getElementById('rejectModal').classList.add('active');
+    });
+  });
+}
+
+document.getElementById('rejectSend').addEventListener('click', async () => {
+  const comment = document.getElementById('rejectComment').value.trim();
+  await sb.from('completions').update({ status: 'rejected', parent_comment: comment }).eq('id', pendingRejectId);
+  document.getElementById('rejectModal').classList.remove('active');
+  renderParentTab('review');
+});
+document.getElementById('rejectCancel').addEventListener('click', () => document.getElementById('rejectModal').classList.remove('active'));
+
+async function renderParentTasks(content) {
+  const { data: tasks } = await sb.from('tasks').select('*').order('created_at');
+
+  content.innerHTML = `
+    <div class="sec-header">
+      <div class="sec-title">📝 Список заданий</div>
+      <button class="btn-sm btn-approve" id="addTaskBtn" style="padding:8px 14px">+ Добавить</button>
+    </div>
+    ${(tasks || []).map(t => `
+      <div class="task-edit-card">
+        <div class="task-edit-emoji">${t.emoji}</div>
+        <div class="task-edit-info">
+          <div class="task-edit-name">${t.name}</div>
+          <div class="task-edit-reward">${t.reward} ₽ · ${t.xp} XP · ${t.is_active ? '✅ Активно' : '⏸ Выключено'}</div>
+        </div>
+        <div class="task-edit-actions">
+          <div class="icon-btn edit-task-btn" data-id="${t.id}">✏️</div>
+          <div class="icon-btn toggle-task-btn" data-id="${t.id}" data-active="${t.is_active}">${t.is_active ? '⏸' : '▶️'}</div>
+        </div>
+      </div>
+    `).join('')}
+  `;
+
+  document.getElementById('addTaskBtn').addEventListener('click', () => openEditTaskModal(null));
+
+  content.querySelectorAll('.edit-task-btn').forEach(btn => {
+    const task = tasks.find(t => t.id === btn.dataset.id);
+    btn.addEventListener('click', () => openEditTaskModal(task));
+  });
+
+  content.querySelectorAll('.toggle-task-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const isActive = btn.dataset.active === 'true';
+      await sb.from('tasks').update({ is_active: !isActive }).eq('id', btn.dataset.id);
+      renderParentTab('tasks');
+    });
+  });
+}
+
+function openEditTaskModal(task) {
+  editingTask = task;
+  document.getElementById('etTitle').textContent = task ? 'Редактировать задание' : 'Новое задание';
+  document.getElementById('etEmoji').value = task?.emoji || '⭐';
+  document.getElementById('etName').value = task?.name || '';
+  document.getElementById('etDesc').value = task?.description || '';
+  document.getElementById('etReward').value = task?.reward || 50;
+  document.getElementById('etXp').value = task?.xp || 10;
+  document.getElementById('editTaskModal').classList.add('active');
+}
+
+document.getElementById('etSave').addEventListener('click', async () => {
+  const data = {
+    emoji: document.getElementById('etEmoji').value,
+    name: document.getElementById('etName').value.trim(),
+    description: document.getElementById('etDesc').value.trim(),
+    reward: parseInt(document.getElementById('etReward').value),
+    xp: parseInt(document.getElementById('etXp').value),
+  };
+  if (!data.name) { alert('Введи название'); return; }
+  if (editingTask) {
+    await sb.from('tasks').update(data).eq('id', editingTask.id);
+  } else {
+    await sb.from('tasks').insert({ ...data, is_active: true, requires_photo: true });
+  }
+  document.getElementById('editTaskModal').classList.remove('active');
+  renderParentTab('tasks');
+});
+document.getElementById('etCancel').addEventListener('click', () => document.getElementById('editTaskModal').classList.remove('active'));
+
+async function renderParentWallet(content) {
+  const { data: children } = await sb.from('profiles').select('*').eq('role', 'child');
+  const { data: pendingW } = await sb.from('withdrawals').select('*, profiles(name)').eq('status', 'pending').order('created_at', { ascending: false });
+  const { data: paidW } = await sb.from('withdrawals').select('*, profiles(name)').eq('status', 'paid').order('created_at', { ascending: false }).limit(10);
+
+  content.innerHTML = `
+    ${(children || []).map(child => `
+      <div class="card" style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-weight:900">${child.avatar || '👶'} ${child.name}</div>
+          <div style="font-size:12px;color:var(--muted)">Ребёнок</div>
+        </div>
+        <button class="btn-sm btn-approve bonus-btn" data-id="${child.id}" data-name="${child.name}">🎁 Бонус</button>
+      </div>
+    `).join('')}
+
+    <div class="sec-header" style="margin-top:8px">
+      <div class="sec-title">💸 Запросы на вывод</div>
+      <div class="sec-count">${pendingW?.length || 0}</div>
+    </div>
+    ${(pendingW?.length === 0) ? `<div class="empty"><div class="empty-icon">✅</div><div class="empty-text">Нет запросов</div></div>` : ''}
+    ${(pendingW || []).map(w => `
+      <div class="withdraw-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div>
+            <div class="withdraw-amount">${w.amount} ₽</div>
+            <div class="withdraw-date">👶 ${w.profiles?.name} · ${formatDate(w.created_at)}</div>
+          </div>
+          <button class="btn-sm btn-approve paid-btn" data-id="${w.id}" data-child="${w.child_id}" data-amount="${w.amount}">✅ Перевёл</button>
+        </div>
+      </div>
+    `).join('')}
+
+    ${(paidW?.length > 0) ? `
+    <div class="sec-header" style="margin-top:8px">
+      <div class="sec-title">📋 Выплачено</div>
+    </div>
+    <div class="card">
+      ${(paidW || []).map(w => `
+        <div class="history-item">
+          <div class="history-emoji">💸</div>
+          <div class="history-info">
+            <div class="history-name">${w.profiles?.name}</div>
+            <div class="history-date">${formatDate(w.created_at)}</div>
+          </div>
+          <div class="history-amount">${w.amount} ₽</div>
+        </div>
+      `).join('')}
+    </div>` : ''}
+  `;
+
+  content.querySelectorAll('.paid-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await sb.from('withdrawals').update({ status: 'paid' }).eq('id', btn.dataset.id);
+      renderParentTab('wallet');
+    });
+  });
+
+  content.querySelectorAll('.bonus-btn').forEach(btn => {
+    bonusChildId = null;
+    btn.addEventListener('click', () => {
+      bonusChildId = btn.dataset.id;
+      document.getElementById('bonusChildName').textContent = btn.dataset.name;
+      document.getElementById('bonusAmount').value = '';
+      document.getElementById('bonusMsg').value = '';
+      document.getElementById('bonusModal').classList.add('active');
+    });
+  });
+}
+
+document.getElementById('bonusSend').addEventListener('click', async () => {
+  const amount = parseInt(document.getElementById('bonusAmount').value);
+  const msg = document.getElementById('bonusMsg').value.trim();
+  if (!amount || amount < 1) { alert('Введи сумму бонуса'); return; }
+  await sb.from('bonuses').insert({ child_id: bonusChildId, amount, xp: Math.round(amount/5), message: msg });
+  document.getElementById('bonusModal').classList.remove('active');
+  shootConfetti();
+});
+document.getElementById('bonusCancel').addEventListener('click', () => document.getElementById('bonusModal').classList.remove('active'));
+
+async function renderParentStats(content) {
+  const { data: completions } = await sb.from('completions').select('*, profiles(name), tasks(name, emoji)').eq('status', 'approved');
+  const { data: children } = await sb.from('profiles').select('*').eq('role', 'child');
+
+  const total = (completions || []).length;
+  const totalEarned = (completions || []).reduce((s, c) => s + c.reward, 0);
+
+  const today = new Date().toISOString().split('T')[0];
+  const week = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
+  const todayCount = (completions || []).filter(c => c.created_at?.startsWith(today)).length;
+  const weekCount = (completions || []).filter(c => c.created_at >= week).length;
+
+  const taskFreq = {};
+  (completions || []).forEach(c => {
+    const key = c.tasks?.name || 'Unknown';
+    taskFreq[key] = (taskFreq[key] || 0) + 1;
+  });
+  const topTasks = Object.entries(taskFreq).sort((a,b) => b[1]-a[1]).slice(0, 5);
+
+  content.innerHTML = `
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-val" style="color:var(--accent2)">${total}</div><div class="stat-lbl">Всего заданий</div></div>
+      <div class="stat-card"><div class="stat-val" style="color:var(--green)">${totalEarned} ₽</div><div class="stat-lbl">Выплачено</div></div>
+      <div class="stat-card"><div class="stat-val" style="color:var(--blue)">${todayCount}</div><div class="stat-lbl">Сегодня</div></div>
+      <div class="stat-card"><div class="stat-val" style="color:var(--purple)">${weekCount}</div><div class="stat-lbl">За неделю</div></div>
+    </div>
+
+    ${topTasks.length > 0 ? `
+    <div class="sec-header"><div class="sec-title">🏅 Топ заданий</div></div>
+    <div class="card">
+      ${topTasks.map(([name, count]) => `
+        <div class="history-item">
+          <div class="history-emoji">📌</div>
+          <div class="history-info"><div class="history-name">${name}</div></div>
+          <div style="font-weight:900;color:var(--accent2)">${count}×</div>
+        </div>
+      `).join('')}
+    </div>` : ''}
+
+    ${(children || []).map(child => {
+      const childComp = (completions || []).filter(c => c.child_id === child.id);
+      const childTotal = childComp.reduce((s,c) => s + c.reward, 0);
+      const childXP = childComp.reduce((s,c) => s + c.xp, 0);
+      const { levelName } = calcLevel(childXP);
+      return `
+        <div class="card" style="margin-bottom:10px">
+          <div style="font-size:16px;font-weight:900;margin-bottom:8px">${child.avatar || '👶'} ${child.name}</div>
+          <div style="display:flex;gap:16px">
+            <div><div style="font-weight:900;color:var(--accent2)">${childTotal} ₽</div><div style="font-size:12px;color:var(--muted)">Заработано</div></div>
+            <div><div style="font-weight:900;color:var(--purple)">${childXP} XP</div><div style="font-size:12px;color:var(--muted)">${levelName}</div></div>
+            <div><div style="font-weight:900;color:var(--green)">${childComp.length}</div><div style="font-size:12px;color:var(--muted)">Заданий</div></div>
+          </div>
+        </div>`;
+    }).join('')}
+  `;
+}
+
+// ════════ HELPERS ════════
+function calcLevel(xp) {
+  const levels = [
+    { name: '🌱 Новичок', threshold: 0 },
+    { name: '⚡ Помощник', threshold: 100 },
+    { name: '🔥 Активный', threshold: 300 },
+    { name: '💪 Герой', threshold: 700 },
+    { name: '🏆 Чемпион', threshold: 1500 },
+    { name: '💎 Легенда', threshold: 3000 },
+  ];
+  let level = 1;
+  for (let i = 0; i < levels.length; i++) {
+    if (xp >= levels[i].threshold) level = i + 1;
+  }
+  const levelName = levels[level - 1].name;
+  const xpStart = levels[level - 1].threshold;
+  const xpEnd = levels[level] ? levels[level].threshold : xpStart + 1000;
+  return { level, levelName, xpInLevel: xp - xpStart, xpForNext: xpEnd - xpStart };
+}
+
+function calcStreak(completions) {
+  if (!completions.length) return 0;
+  const days = new Set(completions.map(c => c.created_at?.split('T')[0]));
+  let streak = 0;
+  let d = new Date();
+  while (true) {
+    const key = d.toISOString().split('T')[0];
+    if (days.has(key)) { streak++; d.setDate(d.getDate() - 1); }
+    else break;
+  }
+  return streak;
+}
+
+async function checkAchievements(childId) {
+  const [{ data: completions }, { data: existing }, { data: allAch }] = await Promise.all([
+    sb.from('completions').select('*').eq('child_id', childId).eq('status', 'approved'),
+    sb.from('child_achievements').select('achievement_id').eq('child_id', childId),
+    sb.from('achievements').select('*'),
+  ]);
+  const earnedIds = new Set((existing || []).map(e => e.achievement_id));
+  const totalComp = completions?.length || 0;
+  const totalBalance = (completions || []).reduce((s, c) => s + c.reward, 0);
+  const streak = calcStreak(completions || []);
+
+  for (const ach of (allAch || [])) {
+    if (earnedIds.has(ach.id)) continue;
+    let earned = false;
+    if (ach.condition_type === 'completions' && totalComp >= ach.condition_value) earned = true;
+    if (ach.condition_type === 'balance' && totalBalance >= ach.condition_value) earned = true;
+    if (ach.condition_type === 'streak' && streak >= ach.condition_value) earned = true;
+    if (earned) await sb.from('child_achievements').insert({ child_id: childId, achievement_id: ach.id });
+  }
+}
+
+function formatDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleDateString('ru', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+function shootConfetti() {
+  const wrap = document.getElementById('confetti');
+  const colors = ['#FF6B6B','#FFD93D','#6BCB77','#4D96FF','#C77DFF','#FF9F1C'];
+  for (let i = 0; i < 50; i++) {
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    piece.style.cssText = `left:${Math.random()*100}vw;background:${colors[Math.floor(Math.random()*colors.length)]};width:${6+Math.random()*8}px;height:${6+Math.random()*8}px;border-radius:${Math.random()>.5?'50%':'2px'};animation-duration:${0.8+Math.random()*1.4}s;animation-delay:${Math.random()*0.5}s`;
+    wrap.appendChild(piece);
+    setTimeout(() => piece.remove(), 2500);
+  }
+}
+</script>
+</body>
+</html>
