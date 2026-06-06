@@ -65,7 +65,8 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
   font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 700;
   cursor: pointer; transition: all 0.18s; display: flex; align-items: center; justify-content: center; gap: 8px;
 }
-.btn:active { transform: scale(0.97); }
+.btn:active { transform: scale(0.97) !important; opacity: 0.9; }
+.btn:disabled { cursor: not-allowed; }
 .btn-primary { background: linear-gradient(135deg, #6C63FF, #8B5CF6); color: #fff; box-shadow: 0 4px 14px rgba(108,99,255,0.38); }
 .btn-green { background: linear-gradient(135deg, #10B981, #059669); color: #fff; box-shadow: 0 4px 14px rgba(16,185,129,0.3); }
 .btn-blue { background: linear-gradient(135deg, #3B82F6, #2563EB); color: #fff; }
@@ -550,8 +551,23 @@ document.getElementById('authBtn').addEventListener('click', async () => {
   const email = document.getElementById('authEmail').value.trim();
   const password = document.getElementById('authPassword').value;
   const errEl = document.getElementById('authErr');
+  const btn = document.getElementById('authBtn');
   errEl.textContent = '';
   if (!email || !password) { errEl.textContent = 'Заполни все поля'; return; }
+
+  // Анимация кнопки
+  btn.disabled = true;
+  btn.style.transform = 'scale(0.97)';
+  btn.style.opacity = '0.85';
+  const origText = btn.textContent;
+  btn.innerHTML = '<div class="spinner" style="border-color:rgba(255,255,255,0.3);border-top-color:#fff;width:18px;height:18px"></div> Загрузка...';
+
+  const resetBtn = () => {
+    btn.disabled = false;
+    btn.style.transform = '';
+    btn.style.opacity = '';
+    btn.textContent = origText;
+  };
 
   if (isRegister) {
     const name = document.getElementById('regName').value.trim();
@@ -570,7 +586,7 @@ document.getElementById('authBtn').addEventListener('click', async () => {
     }
 
     const { data, error } = await sb.auth.signUp({ email, password });
-    if (error) { errEl.textContent = error.message; return; }
+    if (error) { errEl.textContent = error.message; resetBtn(); return; }
     if (data.user) {
       const profileData = { id: data.user.id, role, name, family_id: familyId };
       const { error: profError } = await sb.from('profiles').insert(profileData);
@@ -591,7 +607,7 @@ document.getElementById('authBtn').addEventListener('click', async () => {
     }
   } else {
     const { data, error } = await sb.auth.signInWithPassword({ email, password });
-    if (error) { errEl.textContent = 'Неверный email или пароль'; return; }
+    if (error) { errEl.textContent = 'Неверный email или пароль'; resetBtn(); return; }
     await initApp(data.user);
   }
 });
