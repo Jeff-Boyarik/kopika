@@ -280,10 +280,14 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
         </div>
         <div class="field">
           <label>Кто ты?</label>
-          <select id="regRole">
+          <select id="regRole" onchange="toggleFamilyCode(this.value)">
             <option value="child">👶 Ребёнок</option>
             <option value="parent">👨 Родитель</option>
           </select>
+        </div>
+        <div class="field" id="familyCodeField">
+          <label>Код семьи</label>
+          <input type="text" id="regFamilyCode" placeholder="Например: WOLF42" maxlength="6" style="text-transform:uppercase;letter-spacing:3px;font-weight:800;font-size:18px;text-align:center">
         </div>
       </div>
       <div class="field">
@@ -495,6 +499,11 @@ let selectedTaskForSubmit = null;
 
 // ════════ AUTH ════════
 let isRegister = false;
+
+function toggleFamilyCode(role) {
+  const field = document.getElementById('familyCodeField');
+  if (field) field.style.display = role === 'child' ? 'block' : 'none';
+}
 document.getElementById('authToggle').addEventListener('click', () => {
   isRegister = !isRegister;
   document.getElementById('registerFields').style.display = isRegister ? 'block' : 'none';
@@ -503,6 +512,7 @@ document.getElementById('authToggle').addEventListener('click', () => {
   document.getElementById('authToggle').textContent = isRegister ? 'Уже есть аккаунт' : 'Зарегистрироваться';
   document.getElementById('authSwitch').firstChild.textContent = isRegister ? 'Есть аккаунт? ' : 'Нет аккаунта? ';
   document.getElementById('authErr').textContent = '';
+  if (isRegister) toggleFamilyCode('child');
 });
 
 document.getElementById('authBtn').addEventListener('click', async () => {
@@ -515,14 +525,35 @@ document.getElementById('authBtn').addEventListener('click', async () => {
   if (isRegister) {
     const name = document.getElementById('regName').value.trim();
     const role = document.getElementById('regRole').value;
+    const familyCode = document.getElementById('regFamilyCode')?.value.trim().toUpperCase();
     if (!name) { errEl.textContent = 'Введи имя'; return; }
+
+    // If child, verify family code first
+    let familyId = null;
+    if (role === 'child') {
+      if (!familyCode) { errEl.textContent = 'Введи код семьи от родителя'; return; }
+      const { data: fam } = await sb.from('families').select('id').eq('code', familyCode).single();
+      if (!fam) { errEl.textContent = 'Неверный код семьи'; return; }
+      familyId = fam.id;
+    }
+
     const { data, error } = await sb.auth.signUp({ email, password });
     if (error) { errEl.textContent = error.message; return; }
     if (data.user) {
-      const { error: profError } = await sb.from('profiles').insert({ id: data.user.id, role, name });
-      if (profError) {
-        // Maybe profile already exists, try upsert
-        await sb.from('profiles').upsert({ id: data.user.id, role, name });
+      const profileData = { id: data.user.id, role, name, family_id: familyId };
+      const { error: profError } = await sb.from('profiles').insert(profileData);
+      if (profError) await sb.from('profiles').upsert(profileData);
+
+      // If parent, create family automatically
+      if (role === 'parent') {
+        const code = Math.random().toString(36).substring(2, 5).toUpperCase() +
+                     Math.random().toString(36).substring(2, 5).toUpperCase();
+        const { data: fam } = await sb.from('families').insert({
+          parent_id: data.user.id, code, name: name + "'s Family"
+        }).select().single();
+        if (fam) {
+          await sb.from('profiles').update({ family_id: fam.id }).eq('id', data.user.id);
+        }
       }
       await initApp(data.user);
     }
@@ -1082,11 +1113,23 @@ document.getElementById('etSave').addEventListener('click', async () => {
 document.getElementById('etCancel').addEventListener('click', () => document.getElementById('editTaskModal').classList.remove('active'));
 
 async function renderParentWallet(content) {
-  const { data: children } = await sb.from('profiles').select('*').eq('role', 'child');
+  const myFamilyProfile = await sb.from('profiles').select('family_id').eq('id', currentUser.id).single();
+  const myFamId = myFamilyProfile?.data?.family_id;
+  let childQuery = sb.from('profiles').select('*').eq('role', 'child');
+  if (myFamId) childQuery = childQuery.eq('family_id', myFamId);
+  const { data: children } = await childQuery;
   const { data: pendingW } = await sb.from('withdrawals').select('*, profiles(name)').eq('status', 'pending').order('created_at', { ascending: false });
   const { data: paidW } = await sb.from('withdrawals').select('*, profiles(name)').eq('status', 'paid').order('created_at', { ascending: false }).limit(10);
 
+  const { data: myFamily } = await sb.from('families').select('*').eq('parent_id', currentUser.id).single();
+
   content.innerHTML = `
+    ${myFamily ? `
+    <div class="card" style="background:linear-gradient(135deg,#EEF2FF,#E0E7FF);border-color:rgba(108,99,255,0.2)">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Код для вашей семьи</div>
+      <div style="font-family:'Sora',sans-serif;font-size:32px;font-weight:900;color:var(--accent);letter-spacing:6px">${myFamily.code}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">Дай этот код ребёнку при регистрации</div>
+    </div>` : ''}
     ${(children || []).map(child => `
       <div class="card" style="display:flex;align-items:center;justify-content:space-between">
         <div>
