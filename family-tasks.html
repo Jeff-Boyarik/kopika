@@ -485,7 +485,38 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
 <script>
 const SUPABASE_URL = 'https://nqjxnnqswjayqfqzebct.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xanhubnFzd2pheXFmcXplYmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTU2NDEsImV4cCI6MjA5NjI3MTY0MX0.6yzQEJn2z86FjwT9ql8qQtKqSnIDx6cYDeYQGWX9yCo';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true },
+  global: { fetch: (...args) => fetch(...args) }
+});
+
+// Прогрев базы — сразу при загрузке страницы
+(async () => {
+  try { await sb.from('tasks').select('id').limit(1); } catch(e) {}
+})();
+
+// Кэш данных
+const cache = {
+  tasks: null, achievements: null,
+  tasksTime: 0, achTime: 0,
+  TTL: 60000, // 1 минута
+};
+
+async function getTasks() {
+  if (cache.tasks && Date.now() - cache.tasksTime < cache.TTL) return cache.tasks;
+  const { data } = await sb.from('tasks').select('*').eq('is_active', true).order('created_at');
+  cache.tasks = data || [];
+  cache.tasksTime = Date.now();
+  return cache.tasks;
+}
+
+async function getAchievements() {
+  if (cache.achievements && Date.now() - cache.achTime < cache.TTL) return cache.achievements;
+  const { data } = await sb.from('achievements').select('*');
+  cache.achievements = data || [];
+  cache.achTime = Date.now();
+  return cache.achievements;
+}
 
 let currentUser = null;
 let currentProfile = null;
@@ -710,8 +741,8 @@ async function renderChildHome(content) {
 }
 
 async function renderChildTasks(content) {
-  const [{ data: tasks }, { data: todayCompletions }] = await Promise.all([
-    sb.from('tasks').select('*').eq('is_active', true).order('created_at'),
+  const [tasks, { data: todayCompletions }] = await Promise.all([
+    getTasks(),
     sb.from('completions').select('*').eq('child_id', currentUser.id)
       .gte('created_at', new Date().toISOString().split('T')[0]),
   ]);
@@ -776,8 +807,8 @@ async function renderChildTasks(content) {
 }
 
 async function renderChildAchievements(content) {
-  const [{ data: allAch }, { data: earned }] = await Promise.all([
-    sb.from('achievements').select('*'),
+  const [allAch, { data: earned }] = await Promise.all([
+    getAchievements(),
     sb.from('child_achievements').select('*').eq('child_id', currentUser.id),
   ]);
   const earnedIds = new Set((earned || []).map(e => e.achievement_id));
@@ -1040,7 +1071,8 @@ document.getElementById('rejectSend').addEventListener('click', async () => {
 document.getElementById('rejectCancel').addEventListener('click', () => document.getElementById('rejectModal').classList.remove('active'));
 
 async function renderParentTasks(content) {
-  const { data: tasks } = await sb.from('tasks').select('*').order('created_at');
+  cache.tasks = null; // родитель всегда видит свежие данные
+  const tasks = await getTasks();
 
   content.innerHTML = `
     <div class="sec-header">
@@ -1107,6 +1139,7 @@ document.getElementById('etSave').addEventListener('click', async () => {
   } else {
     await sb.from('tasks').insert({ ...data, is_active: true, requires_photo: true });
   }
+  cache.tasks = null; // сбрасываем кэш
   document.getElementById('editTaskModal').classList.remove('active');
   renderParentTab('tasks');
 });
@@ -1295,10 +1328,10 @@ function calcStreak(completions) {
 }
 
 async function checkAchievements(childId) {
-  const [{ data: completions }, { data: existing }, { data: allAch }] = await Promise.all([
+  const [{ data: completions }, { data: existing }, allAch] = await Promise.all([
     sb.from('completions').select('*').eq('child_id', childId).eq('status', 'approved'),
     sb.from('child_achievements').select('achievement_id').eq('child_id', childId),
-    sb.from('achievements').select('*'),
+    getAchievements(),
   ]);
   const earnedIds = new Set((existing || []).map(e => e.achievement_id));
   const totalComp = completions?.length || 0;
